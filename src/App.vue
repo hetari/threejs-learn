@@ -1,10 +1,7 @@
-<script setup lang="ts">
-import { TresCanvas } from "@tresjs/core";
-import Test from "./components/Test.vue";
-</script>
+<script setup lang="ts"></script>
 
 <template>
-    <TresCanvas window-size>
-        <Test />
-    </TresCanvas>
+  <main>
+    <RouterView />
+  </main>
 </template>
