@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import { TresCanvas } from "@tresjs/core";
+import Test from "./components/Test.vue";
 </script>
 
 <template>
-  <HelloWorld />
+    <TresCanvas window-size>
+        <Test />
+    </TresCanvas>
 </template>
