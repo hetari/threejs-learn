@@ -22,6 +22,7 @@ import {
 import { LineMaterial, OrbitControls } from "three/examples/jsm/Addons.js";
 import { tryOnMounted, useWindowSize } from "@vueuse/core";
 import { useTemplateRef } from "vue";
+import GUI from "lil-gui";
 
 const canvas = useTemplateRef<HTMLCanvasElement>("canvas");
 const { width, height } = useWindowSize();
@@ -260,6 +261,52 @@ tryOnMounted(() => {
   const stars = getStarField({ numStars: 5000 });
   scene.add(stars);
 
+  // GUI folders and controls
+  const gui = new GUI({ title: "Earth Controls" });
+
+  const settings = {
+    rotation: true,
+    showDayMap: true,
+    showNightLights: true,
+    showClouds: true,
+    showAtmosphere: true,
+    showStars: true,
+    rotationSpeed: 0.005,
+    ambientLightIntensity: 0.3,
+  };
+  const visibilityFolder = gui.addFolder("Visibility");
+  visibilityFolder.add(settings, "showDayMap").onChange((value: boolean) => {
+    earth.visible = value;
+  });
+  visibilityFolder
+    .add(settings, "showNightLights")
+    .onChange((value: boolean) => {
+      nightLightMesh.visible = value;
+    });
+  visibilityFolder.add(settings, "showClouds").onChange((value: boolean) => {
+    cloudMesh.visible = value;
+  });
+  visibilityFolder
+    .add(settings, "showAtmosphere")
+    .onChange((value: boolean) => {
+      atmosphereMesh.visible = value;
+    });
+  visibilityFolder.add(settings, "showStars").onChange((value: boolean) => {
+    stars.visible = value;
+  });
+
+  const animationFolder = gui.addFolder("Animation");
+  animationFolder.add(settings, "rotation").name("Auto Rotate");
+  animationFolder.add(settings, "rotationSpeed", 0, 0.02, 0.001).name("Speed");
+
+  const lightingFolder = gui.addFolder("Lighting");
+  lightingFolder
+    .add(settings, "ambientLightIntensity", 0, 1, 0.01)
+    .name("Ambient")
+    .onChange((value: number) => {
+      ambientLight.intensity = value;
+    });
+
   // control
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -268,12 +315,17 @@ tryOnMounted(() => {
   controls.autoRotate = false;
   controls.rotateSpeed = 0.5;
 
+  gui.close();
+
   // animate
   const animate = () => {
     requestAnimationFrame(animate);
-    earth.rotation.y += 0.005;
-    nightLightMesh.rotation.y += 0.005;
-    cloudMesh.rotation.y += 0.005;
+
+    if (settings.rotation) {
+      earth.rotation.y += settings.rotationSpeed;
+      nightLightMesh.rotation.y += settings.rotationSpeed;
+      cloudMesh.rotation.y += settings.rotationSpeed;
+    }
 
     controls.update();
     renderer.render(scene, camera);
