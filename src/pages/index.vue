@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, reactive } from "vue";
 import { useRouter } from "vue-router";
 
 defineOptions({
@@ -31,8 +31,14 @@ const pages = computed(() => {
     .sort((a, b) => a.label.localeCompare(b.label));
 });
 
-function getPreviewUrl(path: string) {
-  return `${window.location.origin}${path}`;
+function getPreviewSrc(slug: string) {
+  return `${import.meta.env.BASE_URL}previews/${slug}.png`;
+}
+
+const previewFailed = reactive<Record<string, boolean>>({});
+
+function handlePreviewError(slug: string) {
+  previewFailed[slug] = true;
 }
 </script>
 
@@ -108,13 +114,39 @@ function getPreviewUrl(path: string) {
 
           <!-- preview -->
           <div class="relative aspect-[16/10] overflow-hidden bg-black">
-            <!-- cache the iframe preview -->
-            <iframe
-              :src="getPreviewUrl(page.path)"
+            <img
+              v-if="!previewFailed[page.name]"
+              :src="getPreviewSrc(page.name)"
+              :alt="`${page.label} preview`"
               loading="lazy"
-              sandbox="allow-scripts allow-same-origin"
-              tabindex="-1"
-              class="pointer-events-none absolute left-0 top-0 h-[200%] w-[200%] origin-top-left scale-50 border-0 bg-zinc-950"
+              class="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
+              @error="handlePreviewError(page.name)"
+            />
+
+            <div
+              v-else
+              class="flex h-full w-full items-center justify-center border-t border-zinc-800 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_55%),linear-gradient(180deg,rgba(24,24,27,0.9),rgba(9,9,11,1))] px-6 text-center"
+            >
+              <div class="space-y-2">
+                <div
+                  class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-900/80 text-xl font-black text-zinc-200"
+                >
+                  {{ page.icon }}
+                </div>
+
+                <p class="text-sm font-semibold tracking-wide text-zinc-100">
+                  {{ page.label }}
+                </p>
+
+                <p class="text-xs text-zinc-500">
+                  Drop a screenshot at
+                  <span class="text-zinc-300">{{ getPreviewSrc(page.name) }}</span>
+                </p>
+              </div>
+            </div>
+
+            <div
+              class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(9,9,11,0.72),rgba(9,9,11,0.1)_55%,transparent)]"
             />
           </div>
         </router-link>
