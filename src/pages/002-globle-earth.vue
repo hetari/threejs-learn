@@ -274,6 +274,12 @@ tryOnMounted(() => {
 
   // GUI folders and controls
   gui = new GUI({ title: "Earth Controls" });
+  gui.domElement.style.left = "16px";
+  gui.domElement.style.right = "auto";
+  gui.domElement.style.top = "16px";
+  gui.domElement.style.zIndex = "1000";
+  gui.domElement.style.maxHeight = "calc(100vh - 32px)";
+  gui.domElement.style.overflow = "auto";
 
   const settings = {
     rotation: true,

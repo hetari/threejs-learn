@@ -2,6 +2,10 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 
+defineOptions({
+  name: "IndexPage",
+});
+
 const router = useRouter();
 
 const iconMap: Record<string, string> = {
@@ -104,6 +108,7 @@ function getPreviewUrl(path: string) {
 
           <!-- preview -->
           <div class="relative aspect-[16/10] overflow-hidden bg-black">
+            <!-- cache the iframe preview -->
             <iframe
               :src="getPreviewUrl(page.path)"
               loading="lazy"

@@ -135,6 +135,12 @@ tryOnMounted(() => {
 
   // gui
   gui = new GUI();
+  gui.domElement.style.left = "16px";
+  gui.domElement.style.right = "auto";
+  gui.domElement.style.top = "16px";
+  gui.domElement.style.zIndex = "1000";
+  gui.domElement.style.maxHeight = "calc(100vh - 32px)";
+  gui.domElement.style.overflow = "auto";
 
   gui.add(mesh.rotation, "x", 0, Math.PI * 2, 0.01);
   gui.add(mesh.rotation, "y", 0, Math.PI * 2, 0.01);
