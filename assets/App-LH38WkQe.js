@@ -1,0 +1,1 @@
+import{M as e,T as t,_ as n,l as r,o as i,r as a,x as o}from"./vue.runtime.esm-bundler-CWPYixPp.js";import{t as s}from"./vue-router-Cg0TSZcm.js";var c=r({__name:`App`,setup(r){return(r,c)=>(n(),i(e(s),null,{default:t(({Component:e})=>[(n(),i(a,{include:`IndexPage`},[(n(),i(o(e)))],1024))]),_:1}))}});export{c as default};
