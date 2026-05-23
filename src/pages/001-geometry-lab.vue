@@ -16,17 +16,30 @@ import {
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { useTemplateRef } from "vue";
-import { tryOnMounted, useWindowSize } from "@vueuse/core";
+import { tryOnMounted, tryOnUnmounted, useWindowSize } from "@vueuse/core";
 import GUI from "lil-gui";
 
 const canvas = useTemplateRef<HTMLCanvasElement>("canvas");
 const { width, height } = useWindowSize();
+let gui: GUI | undefined;
+let controls: OrbitControls | undefined;
+let renderer: WebGLRenderer | undefined;
+let resize: (() => void) | undefined;
+let animationFrameId = 0;
+
+tryOnUnmounted(() => {
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  resize && removeEventListener("resize", resize);
+  controls?.dispose();
+  gui?.destroy();
+  renderer?.dispose();
+});
 
 tryOnMounted(() => {
   if (!canvas.value) return;
 
   // renderer
-  const renderer = new WebGLRenderer({
+  renderer = new WebGLRenderer({
     canvas: canvas.value,
     antialias: true,
   });
@@ -96,17 +109,17 @@ tryOnMounted(() => {
   scene.add(axes, grid);
 
   // controls
-  const controls = new OrbitControls(camera, renderer.domElement);
+  controls = new OrbitControls(camera, renderer.domElement);
 
   controls.enableDamping = true;
   controls.autoRotate = true;
 
   // resize
-  const resize = () => {
+  resize = () => {
     camera.aspect = width.value / height.value;
     camera.updateProjectionMatrix();
 
-    renderer.setSize(width.value, height.value);
+    renderer!.setSize(width.value, height.value);
   };
 
   addEventListener("resize", resize);
@@ -121,7 +134,7 @@ tryOnMounted(() => {
   };
 
   // gui
-  const gui = new GUI();
+  gui = new GUI();
 
   gui.add(mesh.rotation, "x", 0, Math.PI * 2, 0.01);
   gui.add(mesh.rotation, "y", 0, Math.PI * 2, 0.01);
@@ -186,10 +199,10 @@ tryOnMounted(() => {
   gui.close();
   // render
   const render = () => {
-    controls.update();
-    renderer.render(scene, camera);
+    controls!.update();
+    renderer!.render(scene, camera);
 
-    requestAnimationFrame(render);
+    animationFrameId = requestAnimationFrame(render);
   };
 
   render();

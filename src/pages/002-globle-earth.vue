@@ -19,13 +19,24 @@ import {
   AmbientLight,
   FrontSide,
 } from "three";
-import { LineMaterial, OrbitControls } from "three/examples/jsm/Addons.js";
-import { tryOnMounted, useWindowSize } from "@vueuse/core";
+import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { tryOnMounted, tryOnUnmounted, useWindowSize } from "@vueuse/core";
 import { useTemplateRef } from "vue";
 import GUI from "lil-gui";
 
 const canvas = useTemplateRef<HTMLCanvasElement>("canvas");
 const { width, height } = useWindowSize();
+let gui: GUI | undefined;
+let controls: OrbitControls | undefined;
+let renderer: WebGLRenderer | undefined;
+let animationFrameId = 0;
+
+tryOnUnmounted(() => {
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  controls?.dispose();
+  gui?.destroy();
+  renderer?.dispose();
+});
 
 /**
  * Creates a circular texture for star points
@@ -125,7 +136,7 @@ tryOnMounted(() => {
   camera.position.z = 3;
 
   // renderer
-  const renderer = new WebGLRenderer({
+  renderer = new WebGLRenderer({
     canvas: canvas.value,
     antialias: true,
   });
@@ -262,7 +273,7 @@ tryOnMounted(() => {
   scene.add(stars);
 
   // GUI folders and controls
-  const gui = new GUI({ title: "Earth Controls" });
+  gui = new GUI({ title: "Earth Controls" });
 
   const settings = {
     rotation: true,
@@ -308,7 +319,7 @@ tryOnMounted(() => {
     });
 
   // control
-  const controls = new OrbitControls(camera, renderer.domElement);
+  controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
   controls.enableZoom = true;
@@ -319,7 +330,7 @@ tryOnMounted(() => {
 
   // animate
   const animate = () => {
-    requestAnimationFrame(animate);
+    animationFrameId = requestAnimationFrame(animate);
 
     if (settings.rotation) {
       earth.rotation.y += settings.rotationSpeed;
@@ -327,8 +338,8 @@ tryOnMounted(() => {
       cloudMesh.rotation.y += settings.rotationSpeed;
     }
 
-    controls.update();
-    renderer.render(scene, camera);
+    controls!.update();
+    renderer!.render(scene, camera);
   };
   animate();
 });
