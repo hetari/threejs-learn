@@ -38,6 +38,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/geometry-lab': RouteRecordInfo<
+      '/geometry-lab',
+      '/geometry-lab',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
   }
 
   /**
@@ -54,6 +61,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/index.vue': {
       routes:
         | '/'
+      views:
+        | never
+    }
+    'src/pages/geometry-lab.vue': {
+      routes:
+        | '/geometry-lab'
       views:
         | never
     }

@@ -1,142 +1,127 @@
 <script setup lang="ts">
-import {
-  WebGLRenderer,
-  PerspectiveCamera,
-  Scene,
-  IcosahedronGeometry,
-  MeshStandardMaterial,
-  Mesh,
-  HemisphereLight,
-  MeshBasicMaterial,
-} from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
 
-import { tryOnMounted, useWindowSize } from "@vueuse/core";
-import { useTemplateRef } from "vue";
-import GUI from "lil-gui";
+const router = useRouter();
 
-const threeRef = useTemplateRef<HTMLCanvasElement>("threeRef");
-const { height, width } = useWindowSize();
+const iconMap: Record<string, string> = {
+  "geometry-lab": "◢",
+};
 
-function setupGui(
-  mesh: Mesh,
-  mat: MeshStandardMaterial,
-  camera: PerspectiveCamera,
-  light: HemisphereLight,
-): GUI {
-  const gui = new GUI({
-    title: "Controls",
-    autoPlace: true,
-    closeFolders: true,
-  });
+const pages = computed(() => {
+  return router
+    .getRoutes()
+    .filter((route) => route.path !== "/" && route.path !== "/:all(.*)")
+    .map((route) => {
+      const slug = route.path.replace(/^\//, "");
 
-  // Mesh position controls
-  const positionFolder = gui.addFolder("Position");
-  positionFolder.add(mesh.position, "x", -3, 3, 0.01).name("X");
-  positionFolder.add(mesh.position, "y", -3, 3, 0.01).name("Y");
-  positionFolder.add(mesh.position, "z", -3, 3, 0.01).name("Z");
-
-  // Mesh rotation controls
-  const rotationFolder = gui.addFolder("Rotation");
-  rotationFolder.add(mesh.rotation, "x", 0, Math.PI * 2, 0.01).name("X");
-  rotationFolder.add(mesh.rotation, "y", 0, Math.PI * 2, 0.01).name("Y");
-  rotationFolder.add(mesh.rotation, "z", 0, Math.PI * 2, 0.01).name("Z");
-
-  // Material controls
-  const materialFolder = gui.addFolder("Material");
-  materialFolder.addColor(mat, "color").name("Color");
-  materialFolder.add(mat, "wireframe").name("Wireframe");
-  materialFolder
-    .add(mat, "flatShading")
-    .name("Flat Shading")
-    .onChange(() => {
-      mat.needsUpdate = true;
-    });
-
-  // Camera controls
-  const cameraFolder = gui.addFolder("Camera");
-  cameraFolder.add(camera.position, "z", 0.5, 5, 0.1).name("Zoom");
-
-  // Light controls
-  const lightFolder = gui.addFolder("Hemisphere Light");
-  lightFolder.addColor(light, "color").name("Sky Color");
-  lightFolder.addColor(light, "groundColor").name("Ground Color");
-  lightFolder.add(light, "intensity", 0, 2, 0.01).name("Intensity");
-
-  // Geometry controls
-  const geometryFolder = gui.addFolder("Geometry");
-  geometryFolder
-    .add({ detail: 2 }, "detail", 0, 5, 1)
-    .name("Detail")
-    .onChange((value: number) => {
-      mesh.geometry.dispose();
-      mesh.geometry = new IcosahedronGeometry(1.0, value);
-    });
-
-  return gui;
-}
-
-tryOnMounted(() => {
-  // setup
-  if (!threeRef.value) return;
-
-  const renderer = new WebGLRenderer({
-    canvas: threeRef.value,
-  });
-  renderer.setSize(width.value, height.value);
-
-  const fov = 75;
-  const aspect = width.value / height.value;
-  const near = 0.1;
-  const far = 10;
-  const camera = new PerspectiveCamera(fov, aspect, near, far);
-  camera.position.z = 2;
-
-  const scene = new Scene();
-
-  // geo
-  const geo = new IcosahedronGeometry(1, 2);
-  const mat = new MeshStandardMaterial({
-    color: 0xffffff,
-    // color: 0xe9573,
-    flatShading: true,
-  });
-  const mesh = new Mesh(geo, mat);
-  scene.add(mesh);
-
-  //
-  const wireMat = new MeshBasicMaterial({
-    color: 0xffffff,
-    wireframe: true,
-  });
-  const wireMesh = new Mesh(geo, wireMat);
-  wireMesh.scale.setScalar(1.001);
-  mesh.add(wireMesh);
-
-  // light
-  const hemilight = new HemisphereLight(0x0099ff, 0xaa5500);
-  scene.add(hemilight);
-
-  // controlls
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.02;
-  controls.enableZoom = true;
-  // controls.enablePan = true;
-
-  // Setup GUI
-  setupGui(mesh, mat, camera, hemilight);
-
-  function render(t: number = 0) {
-    renderer.render(scene, camera);
-    controls.update();
-    mesh.rotation.y = t * 0.0002;
-    requestAnimationFrame(render);
-  }
-  render();
+      return {
+        name: slug,
+        path: route.path,
+        label: slug
+          .replace(/[-_]/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase()),
+        icon: iconMap[slug] || "◆",
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
 });
+
+function getPreviewUrl(path: string) {
+  return `${window.location.origin}${path}`;
+}
 </script>
 
 <template>
-  <canvas ref="threeRef" />
+  <main class="min-h-dvh overflow-hidden bg-zinc-950 text-zinc-100">
+    <!-- background -->
+    <div
+      class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_35%)]"
+    />
+
+    <section class="relative mx-auto max-w-7xl px-6 py-14 md:px-10">
+      <!-- header -->
+      <header class="mb-14 flex flex-col gap-5">
+        <div
+          class="inline-flex w-fit items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500 backdrop-blur"
+        >
+          <span class="h-2 w-2 rounded-full bg-emerald-400" />
+          Playground
+        </div>
+
+        <div class="space-y-3">
+          <h1
+            class="text-4xl font-black tracking-[-0.08em] text-zinc-50 md:text-6xl"
+          >
+            Experiments
+          </h1>
+
+          <p class="max-w-xl text-sm leading-7 text-zinc-500 md:text-base">
+            Interactive route previews with live rendering.
+          </p>
+        </div>
+      </header>
+
+      <!-- grid -->
+      <section
+        v-if="pages.length"
+        class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3"
+      >
+        <router-link
+          v-for="page in pages"
+          :key="page.path"
+          :to="page.path"
+          class="group relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/70 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700"
+        >
+          <!-- top -->
+          <div
+            class="relative flex items-center justify-between border-b border-zinc-800 px-5 py-4"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="flex h-10 w-10 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-800 text-sm font-bold text-zinc-200"
+              >
+                {{ page.icon }}
+              </div>
+
+              <div class="flex flex-col">
+                <span class="text-sm font-semibold text-zinc-100">
+                  {{ page.label }}
+                </span>
+
+                <span class="text-xs text-zinc-500">
+                  {{ page.path }}
+                </span>
+              </div>
+            </div>
+
+            <div
+              class="text-zinc-600 transition-all duration-300 group-hover:translate-x-1 group-hover:text-zinc-300"
+            >
+              →
+            </div>
+          </div>
+
+          <!-- preview -->
+          <div class="relative aspect-[16/10] overflow-hidden bg-black">
+            <iframe
+              :src="getPreviewUrl(page.path)"
+              loading="lazy"
+              sandbox="allow-scripts allow-same-origin"
+              tabindex="-1"
+              class="pointer-events-none absolute left-0 top-0 h-[200%] w-[200%] origin-top-left scale-50 border-0 bg-zinc-950"
+            />
+          </div>
+        </router-link>
+      </section>
+
+      <!-- empty -->
+      <div
+        v-else
+        class="flex min-h-[320px] items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-900/40 text-sm text-zinc-500"
+      >
+        No pages found in src/pages
+      </div>
+    </section>
+  </main>
 </template>
