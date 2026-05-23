@@ -5,7 +5,7 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 
 const iconMap: Record<string, string> = {
-  "geometry-lab": "◢",
+  "01.geometry-lab": "◢",
 };
 
 const pages = computed(() => {

@@ -38,9 +38,23 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/geometry-lab': RouteRecordInfo<
-      '/geometry-lab',
-      '/geometry-lab',
+    '/000-cube': RouteRecordInfo<
+      '/000-cube',
+      '/000-cube',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/001-geometry-lab': RouteRecordInfo<
+      '/001-geometry-lab',
+      '/001-geometry-lab',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/002-globle-earth': RouteRecordInfo<
+      '/002-globle-earth',
+      '/002-globle-earth',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -64,9 +78,21 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
-    'src/pages/geometry-lab.vue': {
+    'src/pages/000-cube.vue': {
       routes:
-        | '/geometry-lab'
+        | '/000-cube'
+      views:
+        | never
+    }
+    'src/pages/001-geometry-lab.vue': {
+      routes:
+        | '/001-geometry-lab'
+      views:
+        | never
+    }
+    'src/pages/002-globle-earth.vue': {
+      routes:
+        | '/002-globle-earth'
       views:
         | never
     }
