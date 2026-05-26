@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tryOnMounted, useWindowSize } from "@vueuse/core";
+import { tryOnMounted, tryOnUnmounted, useWindowSize } from "@vueuse/core";
 import { useTemplateRef } from "vue";
 import GUI from "lil-gui";
 import {
@@ -28,6 +28,17 @@ import spline from "../lib/spline";
 
 const { height, width } = useWindowSize();
 const canvasRef = useTemplateRef<HTMLCanvasElement>("canvasRef");
+let gui: GUI | undefined;
+let renderer: WebGLRenderer | undefined;
+let resize: (() => void) | undefined;
+let animationFrameId = 0;
+
+tryOnUnmounted(() => {
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  if (resize) window.removeEventListener("resize", resize);
+  gui?.destroy();
+  renderer?.dispose();
+});
 
 tryOnMounted(() => {
   if (!canvasRef.value) return;
@@ -44,7 +55,7 @@ tryOnMounted(() => {
   );
   camera.position.z = 5;
 
-  const renderer = new WebGLRenderer({
+  renderer = new WebGLRenderer({
     canvas: canvasRef.value,
     antialias: true,
   });
@@ -134,7 +145,7 @@ tryOnMounted(() => {
   };
 
   // lil‑gui
-  const gui = new GUI({ title: "Controls" });
+  gui = new GUI({ title: "Controls" });
   gui.domElement.style.left = "16px";
   gui.domElement.style.right = "auto";
   gui.domElement.style.top = "16px";
@@ -200,21 +211,24 @@ tryOnMounted(() => {
   bloomFolder.add(bloomPass, "strength", 0, 3).name("Strength");
   bloomFolder.add(bloomPass, "radius", 0, 1).name("Radius");
 
+  gui.close();
+
   // animation loop
   function animate(t = 0) {
-    requestAnimationFrame(animate);
+    animationFrameId = requestAnimationFrame(animate);
     updateCamera(t);
     composer.render();
   }
   animate();
 
   // resize (also update bloom pass)
-  window.addEventListener("resize", () => {
+  resize = () => {
     camera.aspect = width.value / height.value;
     camera.updateProjectionMatrix();
-    renderer.setSize(width.value, height.value);
+    renderer!.setSize(width.value, height.value);
     composer.setSize(width.value, height.value);
-  });
+  };
+  window.addEventListener("resize", resize);
 });
 </script>
 
