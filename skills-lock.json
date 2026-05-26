@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "tresjs": {
+      "source": "onmax/nuxt-skills",
+      "sourceType": "github",
+      "skillPath": "skills/tresjs/SKILL.md",
+      "computedHash": "3ef19720f18ac2af115325a9950e369be2cf3e22ead5e4c025f86b7d5108d436"
+    }
+  }
+}

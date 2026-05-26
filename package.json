@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
     "@tresjs/core": "^5.8.1",
+    "@tresjs/nuxt": "^5.6.1",
     "@vueuse/core": "^14.3.0",
     "gsap": "^3.15.0",
     "lil-gui": "^0.21.0",

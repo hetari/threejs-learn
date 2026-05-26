@@ -288,7 +288,7 @@ tryOnMounted(() => {
     showClouds: true,
     showAtmosphere: true,
     showStars: true,
-    rotationSpeed: 0.005,
+    rotationSpeed: 0.001,
     ambientLightIntensity: 0.3,
   };
   const visibilityFolder = gui.addFolder("Visibility");
@@ -341,7 +341,7 @@ tryOnMounted(() => {
     if (settings.rotation) {
       earth.rotation.y += settings.rotationSpeed;
       nightLightMesh.rotation.y += settings.rotationSpeed;
-      cloudMesh.rotation.y += settings.rotationSpeed;
+      cloudMesh.rotation.y += settings.rotationSpeed + 0.001;
     }
 
     controls!.update();
