@@ -59,6 +59,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/003-wormhole': RouteRecordInfo<
+      '/003-wormhole',
+      '/003-wormhole',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
   }
 
   /**
@@ -93,6 +100,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/002-globle-earth.vue': {
       routes:
         | '/002-globle-earth'
+      views:
+        | never
+    }
+    'src/pages/003-wormhole.vue': {
+      routes:
+        | '/003-wormhole'
       views:
         | never
     }
