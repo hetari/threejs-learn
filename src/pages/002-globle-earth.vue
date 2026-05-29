@@ -13,9 +13,12 @@ import {
   ShaderMaterial,
   AmbientLight,
   FrontSide,
+  SphereGeometry,
+  MeshBasicMaterial,
+  BackSide,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { tryOnMounted, tryOnUnmounted, useWindowSize } from "@vueuse/core";
+import { tryOnMounted, tryOnUnmounted, useWindowSize, useEventListener } from "@vueuse/core";
 import { useTemplateRef } from "vue";
 import GUI from "lil-gui";
 
@@ -32,8 +35,6 @@ tryOnUnmounted(() => {
   gui?.destroy();
   renderer?.dispose();
 });
-
-import { getStarField } from "../lib/stars";
 
 tryOnMounted(() => {
   if (!canvas.value) return;
@@ -184,7 +185,12 @@ tryOnMounted(() => {
   earthGroup.add(atmosphereMesh);
 
   // stars
-  const stars = getStarField({ numStars: 5000 });
+  const starGeometry = new SphereGeometry(100000, 64, 64);
+  const starMaterial = new MeshBasicMaterial({
+    map: loader.load("textures/stars-milky-way-8k.jpg"),
+    side: BackSide,
+  });
+  const stars = new Mesh(starGeometry, starMaterial);
   scene.add(stars);
 
   // GUI folders and controls

@@ -73,6 +73,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/005-solar-system': RouteRecordInfo<
+      '/005-solar-system',
+      '/005-solar-system',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
   }
 
   /**
@@ -119,6 +126,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/004-cameras.vue': {
       routes:
         | '/004-cameras'
+      views:
+        | never
+    }
+    'src/pages/005-solar-system.vue': {
+      routes:
+        | '/005-solar-system'
       views:
         | never
     }
