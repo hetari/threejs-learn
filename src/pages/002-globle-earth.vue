@@ -13,9 +13,8 @@ import {
   ShaderMaterial,
   AmbientLight,
   FrontSide,
-  SphereGeometry,
-  MeshBasicMaterial,
-  BackSide,
+  EquirectangularReflectionMapping,
+  SRGBColorSpace,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import {
@@ -189,14 +188,11 @@ tryOnMounted(() => {
   const atmosphereMesh = new Mesh(atmosphereGeometry, atmosphereMaterial);
   earthGroup.add(atmosphereMesh);
 
-  // stars
-  const starGeometry = new SphereGeometry(100000, 64, 64);
-  const starMaterial = new MeshBasicMaterial({
-    map: loader.load("textures/stars-milky-way-8k.jpg"),
-    side: BackSide,
-  });
-  const stars = new Mesh(starGeometry, starMaterial);
-  scene.add(stars);
+  // stars background
+  const starTexture = loader.load("textures/stars-milky-way-8k.jpg");
+  starTexture.mapping = EquirectangularReflectionMapping;
+  starTexture.colorSpace = SRGBColorSpace;
+  scene.background = starTexture;
 
   // GUI folders and controls
   gui = new GUI({ title: "Earth Controls" });
@@ -235,7 +231,7 @@ tryOnMounted(() => {
       atmosphereMesh.visible = value;
     });
   visibilityFolder.add(settings, "showStars").onChange((value: boolean) => {
-    stars.visible = value;
+    scene.background = value ? starTexture : null;
   });
 
   const animationFolder = gui.addFolder("Animation");
