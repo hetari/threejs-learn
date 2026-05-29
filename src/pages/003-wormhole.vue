@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tryOnMounted, tryOnUnmounted, useWindowSize } from "@vueuse/core";
+import { tryOnMounted, tryOnUnmounted, useWindowSize, useEventListener } from "@vueuse/core";
 import { useTemplateRef } from "vue";
 import GUI from "lil-gui";
 import {
@@ -30,12 +30,12 @@ const { height, width } = useWindowSize();
 const canvasRef = useTemplateRef<HTMLCanvasElement>("canvasRef");
 let gui: GUI | undefined;
 let renderer: WebGLRenderer | undefined;
-let resize: (() => void) | undefined;
+
 let animationFrameId = 0;
 
 tryOnUnmounted(() => {
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
-  if (resize) window.removeEventListener("resize", resize);
+
   gui?.destroy();
   renderer?.dispose();
 });
@@ -222,13 +222,13 @@ tryOnMounted(() => {
   animate();
 
   // resize (also update bloom pass)
-  resize = () => {
+  const onResize = () => {
     camera.aspect = width.value / height.value;
     camera.updateProjectionMatrix();
     renderer!.setSize(width.value, height.value);
     composer.setSize(width.value, height.value);
   };
-  window.addEventListener("resize", resize);
+  useEventListener("resize", onResize);
 });
 </script>
 

@@ -18,7 +18,12 @@ import {
   BackSide,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { tryOnMounted, tryOnUnmounted, useWindowSize, useEventListener } from "@vueuse/core";
+import {
+  tryOnMounted,
+  tryOnUnmounted,
+  useWindowSize,
+  useEventListener,
+} from "@vueuse/core";
 import { useTemplateRef } from "vue";
 import GUI from "lil-gui";
 
@@ -254,6 +259,14 @@ tryOnMounted(() => {
   controls.rotateSpeed = 0.5;
 
   gui.close();
+
+  // resize
+  const onResize = () => {
+    camera.aspect = width.value / height.value;
+    camera.updateProjectionMatrix();
+    renderer!.setSize(width.value, height.value);
+  };
+  useEventListener("resize", onResize);
 
   // animate
   const animate = () => {

@@ -10,7 +10,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { tryOnMounted, tryOnUnmounted, useWindowSize } from "@vueuse/core";
+import { tryOnMounted, tryOnUnmounted, useWindowSize, useEventListener } from "@vueuse/core";
 import { useTemplateRef } from "vue";
 import GUI from "lil-gui";
 
@@ -19,12 +19,12 @@ const { width, height } = useWindowSize();
 let gui: GUI | undefined;
 let controls: OrbitControls | undefined;
 let renderer: WebGLRenderer | undefined;
-let resize: (() => void) | undefined;
+
 let animationFrameId = 0;
 
 tryOnUnmounted(() => {
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
-  resize && removeEventListener("resize", resize);
+
   controls?.dispose();
   gui?.destroy();
   renderer?.dispose();
@@ -99,14 +99,14 @@ tryOnMounted(() => {
   gui.close();
 
   // resize
-  resize = () => {
+  const onResize = () => {
     camera.aspect = width.value / height.value;
     camera.updateProjectionMatrix();
 
     renderer!.setSize(width.value, height.value);
   };
 
-  addEventListener("resize", resize);
+  useEventListener("resize", onResize);
 
   // animate
   const animate = () => {

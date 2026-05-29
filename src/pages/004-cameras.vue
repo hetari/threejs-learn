@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTemplateRef } from "vue";
-import { tryOnMounted, useWindowSize } from "@vueuse/core";
+import { tryOnMounted, useWindowSize, useEventListener } from "@vueuse/core";
 import {
   BoxGeometry,
   SphereGeometry,
@@ -158,14 +158,14 @@ tryOnMounted(() => {
     right.renderer.setSize(newWidthHalf, height.value);
   };
 
-  window.addEventListener("resize", handleResize);
+  useEventListener("resize", handleResize);
   // Call once to set initial sizes based on actual client dimensions
   handleResize();
 
   // Cleanup
   tryOnMounted(() => {
     cancelAnimationFrame(animationFrameId);
-    window.removeEventListener("resize", handleResize);
+
     left.renderer.dispose();
     right.renderer.dispose();
     left.controls.dispose();
