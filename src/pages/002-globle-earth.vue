@@ -1,18 +1,13 @@
 <script setup lang="ts">
 import {
-  BufferAttribute,
-  BufferGeometry,
   Group,
   IcosahedronGeometry,
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
-  Points,
-  PointsMaterial,
   Scene,
   TextureLoader,
   WebGLRenderer,
-  CanvasTexture,
   AdditiveBlending,
   DirectionalLight,
   ShaderMaterial,
