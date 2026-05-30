@@ -25,6 +25,7 @@ import {
 } from "@vueuse/core";
 import { useTemplateRef } from "vue";
 import GUI from "lil-gui";
+import { createEarthMesh } from "../utils/earth";
 
 const canvas = useTemplateRef<HTMLCanvasElement>("canvas");
 const { width, height } = useWindowSize();
@@ -67,126 +68,22 @@ tryOnMounted(() => {
   sunLight.position.set(2, -0.5, 1.5);
   scene.add(sunLight);
 
-  // earth group
-  const earthGroup = new Group();
-  earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
-  scene.add(earthGroup);
-
-  // earth mesh
   const loader = new TextureLoader();
 
-  const geometry = new IcosahedronGeometry(1, 32);
-  const material = new MeshStandardMaterial({
-    map: loader.load("textures/earth-daymap-4k.jpg"),
-    roughness: 0.8,
-    metalness: 0.1,
+  const {
+    earthGroup,
+    earthMesh: earth,
+    nightLightMesh,
+    cloudMesh,
+    atmosphereMesh,
+  } = createEarthMesh(loader, {
+    radius: 1,
+    sunDirection: sunLight.position.clone().normalize(),
   });
-  const earth = new Mesh(geometry, material);
-  earthGroup.add(earth);
+  scene.add(earthGroup);
 
-  // night lights mesh with custom shader to show only on dark side
-  const nightMapTexture = loader.load("textures/earth-nightmap-4k.jpg");
-
-  const nightLightMaterial = new ShaderMaterial({
-    uniforms: {
-      nightMap: { value: nightMapTexture },
-      sunDirection: { value: sunLight.position.clone().normalize() }, // world‑space direction
-    },
-    vertexShader: `
-    varying vec2 vUv;
-    varying vec3 vWorldNormal;
-    
-    void main() {
-      vUv = uv;
-      // Transform normal to world space
-      vWorldNormal = normalize(mat3(modelMatrix) * normal);
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-    fragmentShader: `
-    uniform sampler2D nightMap;
-    uniform vec3 sunDirection;
-    varying vec2 vUv;
-    varying vec3 vWorldNormal;
-    
-    void main() {
-      // Dot product with world space sun direction
-      float lightIntensity = dot(vWorldNormal, sunDirection);
-      
-      // Smooth transition on the dark side
-      float nightVisibility = smoothstep(0.2, -0.2, lightIntensity);
-      
-      vec4 nightColor = texture2D(nightMap, vUv);
-      gl_FragColor = vec4(nightColor.rgb, nightColor.a * nightVisibility);
-    }
-  `,
-    blending: AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-  });
-  const nightLightMesh = new Mesh(geometry, nightLightMaterial);
-  earthGroup.add(nightLightMesh);
   const ambientLight = new AmbientLight(0x222244, 0.3); // dim bluish light
   scene.add(ambientLight);
-
-  // clouds
-  const cloudTexture = loader.load("textures/earth-clouds-4k.jpg");
-  const cloudMaterial = new MeshStandardMaterial({
-    map: cloudTexture,
-    blending: AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-  });
-  const cloudMesh = new Mesh(geometry, cloudMaterial);
-  cloudMesh.scale.setScalar(1.003);
-  earthGroup.add(cloudMesh);
-
-  // atmospheric glow
-  const atmosphereGeometry = new IcosahedronGeometry(1.005, 32);
-  const atmosphereMaterial = new ShaderMaterial({
-    uniforms: {
-      sunDirection: { value: sunLight.position.clone().normalize() },
-    },
-    vertexShader: `
-    varying vec3 vWorldNormal;
-    varying vec3 vWorldPosition;
-    
-    void main() {
-      vec4 worldPos = modelMatrix * vec4(position, 1.0);
-      vWorldPosition = worldPos.xyz;
-      vWorldNormal = normalize(mat3(modelMatrix) * normal);
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-    fragmentShader: `
-    uniform vec3 sunDirection;
-    varying vec3 vWorldNormal;
-    varying vec3 vWorldPosition;
-    
-    void main() {
-      // Calculate view direction
-      vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
-      
-      // Fresnel effect - stronger glow at edges
-      float fresnel = 1.0 - abs(dot(viewDirection, vWorldNormal));
-      fresnel = pow(fresnel, 3.0);
-      
-      // Atmosphere color (blue)
-      vec3 atmosphereColor = vec3(0.3, 0.6, 1.0);
-      
-      // Mix with transparency based on fresnel
-      float alpha = fresnel * 0.3;
-      
-      gl_FragColor = vec4(atmosphereColor, alpha);
-    }
-  `,
-    blending: AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-    side: FrontSide,
-  });
-  const atmosphereMesh = new Mesh(atmosphereGeometry, atmosphereMaterial);
-  earthGroup.add(atmosphereMesh);
 
   // stars background
   const starTexture = loader.load("textures/stars-milky-way-8k.jpg");
@@ -220,7 +117,7 @@ tryOnMounted(() => {
   visibilityFolder
     .add(settings, "showNightLights")
     .onChange((value: boolean) => {
-      nightLightMesh.visible = value;
+      nightLightMesh!.visible = value;
     });
   visibilityFolder.add(settings, "showClouds").onChange((value: boolean) => {
     cloudMesh.visible = value;
@@ -270,7 +167,7 @@ tryOnMounted(() => {
 
     if (settings.rotation) {
       earth.rotation.y += settings.rotationSpeed;
-      nightLightMesh.rotation.y += settings.rotationSpeed;
+      nightLightMesh!.rotation.y += settings.rotationSpeed;
       cloudMesh.rotation.y += settings.rotationSpeed + 0.001;
     }
 
