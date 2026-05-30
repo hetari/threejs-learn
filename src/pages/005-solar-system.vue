@@ -7,7 +7,6 @@ import {
   useWindowSize,
 } from "@vueuse/core";
 import {
-  CubeTextureLoader,
   Group,
   HemisphereLight,
   Mesh,
@@ -110,6 +109,10 @@ let timer: Timer;
 let scene: Scene;
 let camera: PerspectiveCamera;
 
+// Pre-allocated scratch vectors to avoid per-frame GC pressure
+const _worldPos = new Vector3();
+const _sunDir = new Vector3();
+
 tryOnMounted(() => {
   if (!canvasRef.value) return;
 
@@ -130,8 +133,8 @@ tryOnMounted(() => {
   const pointLight = new PointLight(0xffeedd, 450);
   pointLight.position.set(0, 0, 0);
   pointLight.castShadow = true;
-  pointLight.shadow.mapSize.width = 2048;
-  pointLight.shadow.mapSize.height = 2048;
+  pointLight.shadow.mapSize.width = 1024;
+  pointLight.shadow.mapSize.height = 1024;
   pointLight.shadow.bias = -0.0001; // Reduce shadow acne
   scene.add(pointLight);
 
@@ -150,7 +153,7 @@ tryOnMounted(() => {
 
   // Loaders
   const textureLoader = new TextureLoader();
-  const sphereGeometry = new SphereGeometry(1, 64, 64);
+  const sphereGeometry = new SphereGeometry(1, 32, 32);
 
   // stars background
   const starTexture = textureLoader.load("textures/stars-milky-way-8k.jpg");
@@ -278,10 +281,9 @@ tryOnMounted(() => {
 
       // 4. Update Earth shaders for realistic night map
       if (planetMesh.userData?.isEarth) {
-        const worldPos = new Vector3();
-        planetMesh.getWorldPosition(worldPos);
-        const sunDir = new Vector3(0, 0, 0).sub(worldPos).normalize();
-        planetMesh.userData.updateSunDirection(sunDir);
+        planetMesh.getWorldPosition(_worldPos);
+        _sunDir.set(0, 0, 0).sub(_worldPos).normalize();
+        planetMesh.userData.updateSunDirection(_sunDir);
       }
     });
 
