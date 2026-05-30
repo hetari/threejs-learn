@@ -7,99 +7,283 @@ import {
   useWindowSize,
 } from "@vueuse/core";
 import {
+  CubeTextureLoader,
+  Group,
   HemisphereLight,
   Mesh,
   MeshBasicMaterial,
+  MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
   SphereGeometry,
+  SRGBColorSpace,
+  TextureLoader,
   Timer,
   WebGLRenderer,
+  Vector3,
+  EquirectangularReflectionMapping,
+  PointLight,
+  PCFShadowMap,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { createEarthMesh } from "../utils/earth";
 
+// --- Configuration ---
 const { height, width } = useWindowSize();
 const canvasRef = useTemplateRef<HTMLCanvasElement>("canvasRef");
 
+interface MoonConfig {
+  name: string;
+  radius: number;
+  distance: number;
+  speed: number;
+  texture?: string;
+  color?: number;
+}
+
+interface PlanetConfig {
+  name: string;
+  radius: number;
+  distance: number;
+  speed: number;
+  texture: string;
+  moons: MoonConfig[];
+}
+
+const PLANETS_DATA: PlanetConfig[] = [
+  {
+    name: "Mercury",
+    radius: 0.5,
+    distance: 10,
+    speed: 0.01,
+    texture: "mercury-2k.jpg",
+    moons: [],
+  },
+  {
+    name: "Venus",
+    radius: 0.8,
+    distance: 15,
+    speed: 0.007,
+    texture: "venus-surface-2k.jpg",
+    moons: [],
+  },
+  {
+    name: "Earth",
+    radius: 1,
+    distance: 20,
+    speed: 0.005,
+    texture: "earth-daymap-4k.jpg",
+    moons: [
+      {
+        name: "Moon",
+        radius: 0.3,
+        distance: 3,
+        speed: 0.015,
+        texture: "moon-2k.jpg",
+      },
+    ],
+  },
+  {
+    name: "Mars",
+    radius: 0.7,
+    distance: 25,
+    speed: 0.003,
+    texture: "mars-2k.jpg",
+    moons: [
+      { name: "Phobos", radius: 0.1, distance: 2, speed: 0.02 },
+      {
+        name: "Deimos",
+        radius: 0.2,
+        distance: 3,
+        speed: 0.015,
+        color: 0xffffff,
+      },
+    ],
+  },
+];
+
+// --- Scene Variables ---
 let animationFrameId: number;
 let renderer: WebGLRenderer;
 let controls: OrbitControls;
+let timer: Timer;
+let scene: Scene;
+let camera: PerspectiveCamera;
 
 tryOnMounted(() => {
   if (!canvasRef.value) return;
 
-  // scene
-  const scene = new Scene();
+  timer = new Timer();
+  scene = new Scene();
 
-  // camera
-  const aspect = width.value / height.value;
-  const camera = new PerspectiveCamera(35, aspect, 0.1, 400);
-  camera.position.z = 100;
-  camera.position.y = 5;
+  // Camera setup
+  camera = new PerspectiveCamera(35, width.value / height.value, 0.1, 400);
+  camera.position.set(0, 50, 100);
 
-  // controls
+  // Controls
   controls = new OrbitControls(camera, canvasRef.value);
   controls.enableDamping = true;
 
-  // light
-  const light = new HemisphereLight(0xffffff, 0x444444);
-  scene.add(light);
+  // Lighting
+  scene.add(new HemisphereLight(0xffffff, 0x444444, 0.05)); // Dim ambient light so shadows are visible
 
-  // renderer with pixel ratio
-  renderer = new WebGLRenderer({
-    canvas: canvasRef.value,
-    antialias: true,
-  });
+  const pointLight = new PointLight(0xffeedd, 450);
+  pointLight.position.set(0, 0, 0);
+  pointLight.castShadow = true;
+  pointLight.shadow.mapSize.width = 2048;
+  pointLight.shadow.mapSize.height = 2048;
+  pointLight.shadow.bias = -0.0001; // Reduce shadow acne
+  scene.add(pointLight);
 
-  // Set pixel ratio - Math.min(2, device pixel ratio)
+  // Renderer setup
+  renderer = new WebGLRenderer({ canvas: canvasRef.value, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(width.value, height.value);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = PCFShadowMap;
 
-  // on resize
-  const onResize = () => {
-    const newWidth = width.value;
-    const newHeight = height.value;
-
-    renderer.setSize(newWidth, newHeight);
-    camera.aspect = newWidth / newHeight;
+  useEventListener("resize", () => {
+    renderer.setSize(width.value, height.value);
+    camera.aspect = width.value / height.value;
     camera.updateProjectionMatrix();
-  };
-  useEventListener("resize", onResize);
+  });
 
-  // sun
-  const sphereGeometry = new SphereGeometry(1, 32, 32);
-  const sunMaterial = new MeshBasicMaterial({ color: "yellow" });
-  const sunMesh = new Mesh(sphereGeometry, sunMaterial);
+  // Loaders
+  const textureLoader = new TextureLoader();
+  const sphereGeometry = new SphereGeometry(1, 64, 64);
+
+  // stars background
+  const starTexture = textureLoader.load("textures/stars-milky-way-8k.jpg");
+  starTexture.mapping = EquirectangularReflectionMapping;
+  starTexture.colorSpace = SRGBColorSpace;
+  scene.background = starTexture;
+
+  // Sun
+  const sunTexture = textureLoader.load("textures/sun-2k.jpg");
+  sunTexture.colorSpace = SRGBColorSpace;
+  const sunMesh = new Mesh(
+    sphereGeometry,
+    new MeshBasicMaterial({ color: 0xffdd00, map: sunTexture }),
+  );
   sunMesh.scale.setScalar(5);
   scene.add(sunMesh);
 
-  // earth
-  const earthMaterial = new MeshBasicMaterial({ color: "blue" });
-  const earthMesh = new Mesh(sphereGeometry, earthMaterial);
-  earthMesh.position.x = 10;
-  scene.add(earthMesh);
+  // --- Creation Utilities ---
+  const loadTexture = (filename?: string) => {
+    if (!filename) return null;
+    const tex = textureLoader.load(`textures/${filename}`);
+    tex.colorSpace = SRGBColorSpace;
+    return tex;
+  };
 
-  // moon
-  const moonMaterial = new MeshBasicMaterial({ color: "gray" });
-  const moonMesh = new Mesh(sphereGeometry, moonMaterial);
-  moonMesh.scale.setScalar(0.3);
-  moonMesh.position.x = 2;
-  earthMesh.add(moonMesh);
+  const createMoon = (moonData: MoonConfig) => {
+    const material = new MeshStandardMaterial({
+      map: loadTexture(moonData.texture),
+      color: moonData.color || 0xffffff,
+    });
+    const mesh = new Mesh(sphereGeometry, material);
+    mesh.scale.setScalar(moonData.radius);
+    mesh.position.x = moonData.distance;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  };
 
-  // timer
-  const timer = new Timer();
-  // animate
+  const createPlanet = (planetData: PlanetConfig) => {
+    // Reusing our custom Earth utility!
+    if (planetData.name === "Earth") {
+      const { earthGroup, updateSunDirection } = createEarthMesh(
+        textureLoader,
+        {
+          radius: planetData.radius,
+          sunDirection: new Vector3(-1, 0, 0), // Will be updated in animate
+          showNightMap: !false,
+        },
+      );
+      earthGroup.position.x = planetData.distance;
+      earthGroup.userData = { isEarth: true, updateSunDirection };
+
+      // Enable shadows for earth meshes
+      earthGroup.children.forEach((child) => {
+        if (child instanceof Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      return earthGroup;
+    }
+
+    const material = new MeshStandardMaterial({
+      map: loadTexture(planetData.texture),
+    });
+    const mesh = new Mesh(sphereGeometry, material);
+    mesh.scale.setScalar(planetData.radius);
+    mesh.position.x = planetData.distance;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  };
+
+  // Build the Solar System
+  const planetMeshes = PLANETS_DATA.map((planetData) => {
+    const planetGroup = new Group(); // Wrapper for the orbit
+
+    // 1. Create the planet itself
+    const planetMesh = createPlanet(planetData);
+    planetGroup.add(planetMesh);
+
+    // 2. Create its moons
+    planetData.moons.forEach((moonData) => {
+      const moonMesh = createMoon(moonData);
+      planetGroup.add(moonMesh);
+    });
+
+    scene.add(planetGroup);
+    return { group: planetGroup, planetMesh, data: planetData };
+  });
+
+  // --- Animation Loop ---
   const animate = () => {
-    const elapsed = timer.getElapsed();
-
-    earthMesh.rotation.y += 0.01;
-
-    earthMesh.position.x = Math.sin(elapsed) * 10;
-    earthMesh.position.y = Math.cos(elapsed) * 10;
-    moonMesh.position.x = Math.sin(elapsed) * 2;
-    moonMesh.position.y = Math.cos(elapsed) * 2;
-
     timer.update();
+
+    planetMeshes.forEach(({ group, planetMesh, data }) => {
+      // 1. Orbit around the sun (rotate the wrapper group)
+      group.rotation.y += data.speed;
+
+      // 2. Planet self-rotation
+      if (planetMesh instanceof Group) {
+        // For custom Earth group
+        planetMesh.children.forEach(
+          (child) => (child.rotation.y += data.speed * 2),
+        );
+      } else {
+        planetMesh.rotation.y += data.speed * 2;
+      }
+
+      // 3. Moon orbits (rotate moons around the planet)
+      data.moons.forEach((moonData, index) => {
+        // Planet mesh is added first, so moons start at index + 1
+        const moonMesh = group.children[index + 1];
+        if (moonMesh) {
+          // Calculate moon position relative to planet
+          const moonAngle = timer.getElapsed() * moonData.speed * 100;
+          moonMesh.position.x =
+            planetMesh.position.x + Math.sin(moonAngle) * moonData.distance;
+          moonMesh.position.z =
+            planetMesh.position.z + Math.cos(moonAngle) * moonData.distance;
+          moonMesh.rotation.y += moonData.speed;
+        }
+      });
+
+      // 4. Update Earth shaders for realistic night map
+      if (planetMesh.userData?.isEarth) {
+        const worldPos = new Vector3();
+        planetMesh.getWorldPosition(worldPos);
+        const sunDir = new Vector3(0, 0, 0).sub(worldPos).normalize();
+        planetMesh.userData.updateSunDirection(sunDir);
+      }
+    });
 
     controls.update();
     renderer.render(scene, camera);
@@ -107,10 +291,11 @@ tryOnMounted(() => {
   };
   animate();
 });
+
 tryOnUnmounted(() => {
-  cancelAnimationFrame(animationFrameId);
-  renderer.dispose();
-  controls.dispose();
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  renderer?.dispose();
+  controls?.dispose();
 });
 </script>
 
