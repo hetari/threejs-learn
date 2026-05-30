@@ -8,8 +8,12 @@ import {
 } from "@vueuse/core";
 import {
   HemisphereLight,
+  Mesh,
+  MeshBasicMaterial,
   PerspectiveCamera,
   Scene,
+  SphereGeometry,
+  Timer,
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
@@ -29,8 +33,9 @@ tryOnMounted(() => {
 
   // camera
   const aspect = width.value / height.value;
-  const camera = new PerspectiveCamera(45, aspect, 0.1, 200);
-  camera.position.z = 5;
+  const camera = new PerspectiveCamera(35, aspect, 0.1, 400);
+  camera.position.z = 100;
+  camera.position.y = 5;
 
   // controls
   controls = new OrbitControls(camera, canvasRef.value);
@@ -61,8 +66,41 @@ tryOnMounted(() => {
   };
   useEventListener("resize", onResize);
 
+  // sun
+  const sphereGeometry = new SphereGeometry(1, 32, 32);
+  const sunMaterial = new MeshBasicMaterial({ color: "yellow" });
+  const sunMesh = new Mesh(sphereGeometry, sunMaterial);
+  sunMesh.scale.setScalar(5);
+  scene.add(sunMesh);
+
+  // earth
+  const earthMaterial = new MeshBasicMaterial({ color: "blue" });
+  const earthMesh = new Mesh(sphereGeometry, earthMaterial);
+  earthMesh.position.x = 10;
+  scene.add(earthMesh);
+
+  // moon
+  const moonMaterial = new MeshBasicMaterial({ color: "gray" });
+  const moonMesh = new Mesh(sphereGeometry, moonMaterial);
+  moonMesh.scale.setScalar(0.3);
+  moonMesh.position.x = 2;
+  earthMesh.add(moonMesh);
+
+  // timer
+  const timer = new Timer();
   // animate
   const animate = () => {
+    const elapsed = timer.getElapsed();
+
+    earthMesh.rotation.y += 0.01;
+
+    earthMesh.position.x = Math.sin(elapsed) * 10;
+    earthMesh.position.y = Math.cos(elapsed) * 10;
+    moonMesh.position.x = Math.sin(elapsed) * 2;
+    moonMesh.position.y = Math.cos(elapsed) * 2;
+
+    timer.update();
+
     controls.update();
     renderer.render(scene, camera);
     animationFrameId = requestAnimationFrame(animate);
