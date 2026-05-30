@@ -26,6 +26,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import { createEarthMesh } from "../utils/earth";
+import GUI from "lil-gui";
 
 // --- Configuration ---
 const { height, width } = useWindowSize();
@@ -108,6 +109,7 @@ let controls: OrbitControls;
 let timer: Timer;
 let scene: Scene;
 let camera: PerspectiveCamera;
+let gui: GUI | undefined;
 
 // Pre-allocated scratch vectors to avoid per-frame GC pressure
 const _worldPos = new Vector3();
@@ -128,7 +130,8 @@ tryOnMounted(() => {
   controls.enableDamping = true;
 
   // Lighting
-  scene.add(new HemisphereLight(0xffffff, 0x444444, 0.05)); // Dim ambient light so shadows are visible
+  const ambientLight = new HemisphereLight(0xffffff, 0x444444, 0.05); // Dim ambient light so shadows are visible
+  scene.add(ambientLight);
 
   const pointLight = new PointLight(0xffeedd, 450);
   pointLight.position.set(0, 0, 0);
@@ -246,22 +249,100 @@ tryOnMounted(() => {
     return { group: planetGroup, planetMesh, data: planetData };
   });
 
+  // --- GUI Controls ---
+  gui = new GUI({ title: "Solar System Controls" });
+  gui.domElement.style.left = "16px";
+  gui.domElement.style.right = "auto";
+  gui.domElement.style.top = "16px";
+  gui.domElement.style.zIndex = "1000";
+  gui.domElement.style.maxHeight = "calc(100vh - 32px)";
+  gui.domElement.style.overflow = "auto";
+
+  const settings = {
+    orbiting: true,
+    orbitSpeed: 1,
+    selfRotation: true,
+    showShadows: true,
+    lightIntensity: pointLight.intensity,
+    lightColor: `#${pointLight.color.getHexString()}`,
+    ambientIntensity: 0.05,
+    showStars: true,
+  };
+
+  // Animation folder
+  const animFolder = gui.addFolder("Animation");
+  animFolder.add(settings, "orbiting").name("Orbit Planets");
+  animFolder.add(settings, "orbitSpeed", 0.1, 5, 0.1).name("Orbit Speed");
+  animFolder.add(settings, "selfRotation").name("Self Rotation");
+
+  // Lighting folder
+  const lightFolder = gui.addFolder("Lighting");
+  lightFolder
+    .add(settings, "lightIntensity", 0, 2000, 10)
+    .name("Sun Intensity")
+    .onChange((v: number) => {
+      pointLight.intensity = v;
+    });
+  lightFolder
+    .addColor(settings, "lightColor")
+    .name("Sun Color")
+    .onChange((v: string) => {
+      pointLight.color.set(v);
+    });
+  lightFolder
+    .add(settings, "ambientIntensity", 0, 1, 0.01)
+    .name("Ambient")
+    .onChange((v: number) => {
+      ambientLight.intensity = v;
+    });
+
+  // Rendering folder
+  const renderFolder = gui.addFolder("Rendering");
+  renderFolder
+    .add(settings, "showShadows")
+    .name("Shadows")
+    .onChange((v: boolean) => {
+      renderer.shadowMap.enabled = v;
+    });
+  renderFolder
+    .add(settings, "showStars")
+    .name("Stars")
+    .onChange((v: boolean) => {
+      scene.background = v ? starTexture : null;
+    });
+
+  // Planets visibility folder
+  const planetsFolder = gui.addFolder("Planets");
+  planetMeshes.forEach(({ group, data }) => {
+    planetsFolder
+      .add({ visible: true }, "visible")
+      .name(data.name)
+      .onChange((v: boolean) => {
+        group.visible = v;
+      });
+  });
+
+  gui.close();
+
   // --- Animation Loop ---
   const animate = () => {
     timer.update();
 
     planetMeshes.forEach(({ group, planetMesh, data }) => {
       // 1. Orbit around the sun (rotate the wrapper group)
-      group.rotation.y += data.speed;
+      if (settings.orbiting) {
+        group.rotation.y += data.speed * settings.orbitSpeed;
+      }
 
       // 2. Planet self-rotation
-      if (planetMesh instanceof Group) {
-        // For custom Earth group
-        planetMesh.children.forEach(
-          (child) => (child.rotation.y += data.speed * 2),
-        );
-      } else {
-        planetMesh.rotation.y += data.speed * 2;
+      if (settings.selfRotation) {
+        if (planetMesh instanceof Group) {
+          planetMesh.children.forEach(
+            (child) => (child.rotation.y += data.speed * 2),
+          );
+        } else {
+          planetMesh.rotation.y += data.speed * 2;
+        }
       }
 
       // 3. Moon orbits (rotate moons around the planet)
@@ -296,6 +377,8 @@ tryOnMounted(() => {
 
 tryOnUnmounted(() => {
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  gui?.destroy();
+
   renderer?.dispose();
   controls?.dispose();
 });
