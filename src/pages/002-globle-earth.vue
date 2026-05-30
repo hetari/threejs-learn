@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import {
-  Group,
-  IcosahedronGeometry,
-  Mesh,
-  MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
   TextureLoader,
   WebGLRenderer,
-  AdditiveBlending,
   DirectionalLight,
-  ShaderMaterial,
   AmbientLight,
-  FrontSide,
   EquirectangularReflectionMapping,
   SRGBColorSpace,
 } from "three";
