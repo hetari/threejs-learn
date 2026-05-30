@@ -1,4 +1,4 @@
-import{E as e,K as t,L as n,O as r,v as i,x as a}from"./dist-tD6PgEdE.js";function o(o,s={}){let{radius:c=1,sunDirection:l=new t(2,-.5,1.5).normalize(),showNightMap:u=!0}=s,d=new i;d.rotation.z=-23.4*Math.PI/180;let f=new a(c,32),p=new e(f,new r({map:o.load(`textures/earth-daymap-4k.jpg`),roughness:.8,metalness:.1}));d.add(p);let m,h;u&&(h=new n({uniforms:{nightMap:{value:o.load(`textures/earth-nightmap-4k.jpg`)},sunDirection:{value:l}},vertexShader:`
+import{E as e,K as t,L as n,O as r,v as i,x as a}from"./dist-FGrlkjE4.js";function o(o,s={}){let{radius:c=1,sunDirection:l=new t(2,-.5,1.5).normalize(),showNightMap:u=!0}=s,d=new i;d.rotation.z=-23.4*Math.PI/180;let f=new a(c,32),p=new e(f,new r({map:o.load(`textures/earth-daymap-4k.jpg`),roughness:.8,metalness:.1}));d.add(p);let m,h;u&&(h=new n({uniforms:{nightMap:{value:o.load(`textures/earth-nightmap-4k.jpg`)},sunDirection:{value:l}},vertexShader:`
       varying vec2 vUv;
       varying vec3 vWorldNormal;
       
