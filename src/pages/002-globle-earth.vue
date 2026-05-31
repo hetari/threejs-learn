@@ -16,7 +16,8 @@ import {
   useWindowSize,
   useEventListener,
 } from "@vueuse/core";
-import { useTemplateRef } from "vue";
+import { useTemplateRef, inject } from "vue";
+import type Stats from "stats.js";
 import GUI from "lil-gui";
 import { createEarthMesh } from "../utils/earth";
 
@@ -26,12 +27,14 @@ let gui: GUI | undefined;
 let controls: OrbitControls | undefined;
 let renderer: WebGLRenderer | undefined;
 let animationFrameId = 0;
+const stats = inject<Stats & { reset: () => void }>("stats");
 
 tryOnUnmounted(() => {
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
   controls?.dispose();
   gui?.destroy();
   renderer?.dispose();
+  stats?.reset();
 });
 
 tryOnMounted(() => {
@@ -156,6 +159,7 @@ tryOnMounted(() => {
 
   // animate
   const animate = () => {
+    stats?.begin();
     animationFrameId = requestAnimationFrame(animate);
 
     if (settings.rotation) {
@@ -166,6 +170,7 @@ tryOnMounted(() => {
 
     controls!.update();
     renderer!.render(scene, camera);
+    stats?.end();
   };
   animate();
 });

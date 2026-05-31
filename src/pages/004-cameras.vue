@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useTemplateRef } from "vue";
+import { useTemplateRef, inject } from "vue";
+import type Stats from "stats.js";
 import { tryOnMounted, useWindowSize, useEventListener } from "@vueuse/core";
 import {
   BoxGeometry,
@@ -25,6 +26,7 @@ let leftCamera: PerspectiveCamera | OrthographicCamera | null = null;
 let rightCamera: PerspectiveCamera | OrthographicCamera | null = null;
 let leftControls: OrbitControls | null = null;
 let rightControls: OrbitControls | null = null;
+const stats = inject<Stats & { reset: () => void }>("stats");
 
 // Sync function - makes right camera match left camera's position and target
 const syncCameras = () => {
@@ -122,6 +124,7 @@ tryOnMounted(() => {
   // Animation loop
   let animationFrameId: number;
   const animate = () => {
+    stats?.begin();
     left.controls.update();
     right.controls.update();
 
@@ -129,6 +132,7 @@ tryOnMounted(() => {
     right.renderer.render(scene, right.camera);
 
     animationFrameId = requestAnimationFrame(animate);
+    stats?.end();
   };
   animate();
 
@@ -170,6 +174,7 @@ tryOnMounted(() => {
     right.renderer.dispose();
     left.controls.dispose();
     right.controls.dispose();
+    stats?.reset();
   });
 });
 </script>

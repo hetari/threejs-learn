@@ -15,7 +15,8 @@ import {
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { useTemplateRef } from "vue";
+import { useTemplateRef, inject } from "vue";
+import type Stats from "stats.js";
 import { tryOnMounted, tryOnUnmounted, useWindowSize, useEventListener } from "@vueuse/core";
 import GUI from "lil-gui";
 
@@ -24,6 +25,7 @@ const { width, height } = useWindowSize();
 let gui: GUI | undefined;
 let controls: OrbitControls | undefined;
 let renderer: WebGLRenderer | undefined;
+const stats = inject<Stats & { reset: () => void }>("stats");
 
 let animationFrameId = 0;
 
@@ -33,6 +35,7 @@ tryOnUnmounted(() => {
   controls?.dispose();
   gui?.destroy();
   renderer?.dispose();
+  stats?.reset();
 });
 
 tryOnMounted(() => {
@@ -205,10 +208,12 @@ tryOnMounted(() => {
   gui.close();
   // render
   const render = () => {
+    stats?.begin();
     controls!.update();
     renderer!.render(scene, camera);
 
     animationFrameId = requestAnimationFrame(render);
+    stats?.end();
   };
 
   render();

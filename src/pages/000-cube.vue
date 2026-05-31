@@ -11,14 +11,16 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import { tryOnMounted, tryOnUnmounted, useWindowSize, useEventListener } from "@vueuse/core";
-import { useTemplateRef } from "vue";
+import { useTemplateRef, inject } from "vue";
 import GUI from "lil-gui";
+import type Stats from "stats.js";
 
 const canvas = useTemplateRef<HTMLCanvasElement>("canvas");
 const { width, height } = useWindowSize();
 let gui: GUI | undefined;
 let controls: OrbitControls | undefined;
 let renderer: WebGLRenderer | undefined;
+const stats = inject<Stats & { reset: () => void }>("stats");
 
 let animationFrameId = 0;
 
@@ -28,6 +30,7 @@ tryOnUnmounted(() => {
   controls?.dispose();
   gui?.destroy();
   renderer?.dispose();
+  stats?.reset();
 });
 
 tryOnMounted(() => {
@@ -110,11 +113,13 @@ tryOnMounted(() => {
 
   // animate
   const animate = () => {
+    stats?.begin();
     animationFrameId = requestAnimationFrame(animate);
     cube.rotation.x += 0.01;
     cube.rotation.y += 0.01;
     controls!.update();
     renderer!.render(scene, camera);
+    stats?.end();
   };
   animate();
 });

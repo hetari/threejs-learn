@@ -80,6 +80,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/006-shader': RouteRecordInfo<
+      '/006-shader',
+      '/006-shader',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
   }
 
   /**
@@ -132,6 +139,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/005-solar-system.vue': {
       routes:
         | '/005-solar-system'
+      views:
+        | never
+    }
+    'src/pages/006-shader.vue': {
+      routes:
+        | '/006-shader'
       views:
         | never
     }

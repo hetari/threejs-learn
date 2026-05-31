@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { tryOnMounted, tryOnUnmounted, useWindowSize, useEventListener } from "@vueuse/core";
-import { useTemplateRef } from "vue";
+import { useTemplateRef, inject } from "vue";
+import type Stats from "stats.js";
 import GUI from "lil-gui";
 import {
   BoxGeometry,
@@ -30,6 +31,7 @@ const { height, width } = useWindowSize();
 const canvasRef = useTemplateRef<HTMLCanvasElement>("canvasRef");
 let gui: GUI | undefined;
 let renderer: WebGLRenderer | undefined;
+const stats = inject<Stats & { reset: () => void }>("stats");
 
 let animationFrameId = 0;
 
@@ -38,6 +40,7 @@ tryOnUnmounted(() => {
 
   gui?.destroy();
   renderer?.dispose();
+  stats?.reset();
 });
 
 tryOnMounted(() => {
@@ -215,9 +218,11 @@ tryOnMounted(() => {
 
   // animation loop
   function animate(t = 0) {
+    stats?.begin();
     animationFrameId = requestAnimationFrame(animate);
     updateCamera(t);
     composer.render();
+    stats?.end();
   }
   animate();
 

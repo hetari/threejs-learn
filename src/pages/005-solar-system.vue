@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useTemplateRef } from "vue";
+import { useTemplateRef, inject } from "vue";
+import type Stats from "stats.js";
 import {
   tryOnMounted,
   tryOnUnmounted,
@@ -110,6 +111,7 @@ let timer: Timer;
 let scene: Scene;
 let camera: PerspectiveCamera;
 let gui: GUI | undefined;
+const stats = inject<Stats & { reset: () => void }>("stats");
 
 // Pre-allocated scratch vectors to avoid per-frame GC pressure
 const _worldPos = new Vector3();
@@ -326,6 +328,7 @@ tryOnMounted(() => {
 
   // --- Animation Loop ---
   const animate = () => {
+    stats?.begin();
     timer.update();
 
     planetMeshes.forEach(({ group, planetMesh, data }) => {
@@ -371,6 +374,7 @@ tryOnMounted(() => {
     controls.update();
     renderer.render(scene, camera);
     animationFrameId = requestAnimationFrame(animate);
+    stats?.end();
   };
   animate();
 });
@@ -381,6 +385,7 @@ tryOnUnmounted(() => {
 
   renderer?.dispose();
   controls?.dispose();
+  stats?.reset();
 });
 </script>
 
