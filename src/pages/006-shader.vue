@@ -4,14 +4,22 @@ import {
   Mesh,
   PerspectiveCamera,
   Scene,
-  ShaderMaterial,
   WebGLRenderer,
-  PlaneGeometry,
-  TextureLoader,
-  SphereGeometry,
   IcosahedronGeometry,
+  MeshStandardMaterial,
+  AmbientLight,
+  DirectionalLight,
+  Vector2,
+  ACESFilmicToneMapping,
+  WebGLRenderTarget,
+  HalfFloatType,
 } from "three";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
+import {
+  EffectComposer,
+  OrbitControls,
+  RenderPass,
+  UnrealBloomPass,
+} from "three/examples/jsm/Addons.js";
 import {
   tryOnMounted,
   tryOnUnmounted,
@@ -19,10 +27,13 @@ import {
   useEventListener,
 } from "@vueuse/core";
 import { useTemplateRef } from "vue";
-import vertexShader from "../shader/006/vertix.vert?raw";
-import fragmentShader from "../shader/006/fragment.frag?raw";
 import { inject } from "vue";
 import type Stats from "stats.js";
+
+import vertexParse from "../shader/006/vertix_parse.vert?raw";
+import vertexMain from "../shader/006/vertix_main.vert?raw";
+import fragmentParse from "../shader/006/fragment_parse.frag?raw";
+import fragmentMain from "../shader/006/fragment_main.frag?raw";
 
 const canvas = useTemplateRef<HTMLCanvasElement>("canvas");
 const { width, height } = useWindowSize();
@@ -54,13 +65,15 @@ tryOnMounted(() => {
     0.1,
     1000,
   );
-  camera.position.z = 4;
+  camera.position.z = 5;
 
   // renderer
   renderer = new WebGLRenderer({
     canvas: canvas.value,
     antialias: true,
   });
+  renderer.toneMapping = ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(width.value, height.value);
 
@@ -75,45 +88,103 @@ tryOnMounted(() => {
   controls.enableDamping = true;
   controls.enableZoom = true;
 
-  // resize
+  const dirLight = new DirectionalLight("#526cff", 0.6);
+  dirLight.position.set(2, 2, 2);
+
+  const ambientLight = new AmbientLight("#4255ff", 0.5);
+  scene.add(dirLight, ambientLight);
+
+  // shape (plane)
+  const geometry = new IcosahedronGeometry(1, 150);
+  const material = new MeshStandardMaterial();
+
+  material.onBeforeCompile = (shader) => {
+    material.userData.shader = shader;
+    shader.uniforms.uTime = { value: 0 };
+
+    const parseVertixString = `#include <displacementmap_pars_vertex>`;
+    shader.vertexShader = shader.vertexShader.replace(
+      parseVertixString,
+      `\n${parseVertixString}\n${vertexParse}\n`,
+    );
+
+    const mainVertixString = `#include <displacementmap_vertex>`;
+    shader.vertexShader = shader.vertexShader.replace(
+      mainVertixString,
+      `\n${mainVertixString}\n${vertexMain}\n`,
+    );
+
+    const parseFragmentString = `#include <bumpmap_pars_fragment>`;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      parseFragmentString,
+      `\n${parseFragmentString}\n${fragmentParse}\n`,
+    );
+
+    const mainFragmentString = `#include <normal_fragment_maps>`;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      mainFragmentString,
+      `\n${mainFragmentString}\n${fragmentMain}\n`,
+    );
+
+    const emissiveFragmentString = `#include <emissivemap_fragment>`;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      emissiveFragmentString,
+      `\n${emissiveFragmentString}\n
+      // custom glow
+      vec3 glowColor = vec3(0.05, 0.3, 0.8);
+      float peakGlow = pow(vDisplacement, 4.0) * 0.5;
+      float fresnel = pow(1.0 - max(dot(normalize(vViewPosition), normal), 0.0), 4.0) * 0.1;
+      totalEmissiveRadiance += glowColor * (peakGlow + fresnel);
+      \n`,
+    );
+  };
+
+  const ico = new Mesh(geometry, material);
+  scene.add(ico);
+
+  // post processing
+  const renderTarget = new WebGLRenderTarget(width.value, height.value, {
+    type: HalfFloatType,
+  });
+  const effectComposer = new EffectComposer(renderer, renderTarget);
+  const renderPass = new RenderPass(scene, camera);
+  const bloomPass = new UnrealBloomPass(
+    new Vector2(width.value, height.value),
+    0.5, // strength
+    0.4, // radius
+    0.3, // threshold
+  );
+  effectComposer.addPass(renderPass);
+  effectComposer.addPass(bloomPass);
+
+  // animate
   const onResize = () => {
     camera.aspect = width.value / height.value;
     camera.updateProjectionMatrix();
 
     renderer.setSize(width.value, height.value);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  };
+    effectComposer.setSize(width.value, height.value);
 
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    effectComposer.setPixelRatio?.(Math.min(window.devicePixelRatio, 2));
+  };
   useEventListener("resize", onResize);
 
-  //   // light
-  //   const light = new AmbientLight(0xffffff, 0.8);
-  //   scene.add(light);
-
-  // shape (plane)
-  const geometry = new IcosahedronGeometry(1, 124);
-  const material = new ShaderMaterial({
-    vertexShader,
-    fragmentShader,
-  });
-
-  material.uniforms.uTime = { value: 0 };
-
-  const ico = new Mesh(geometry, material);
-  scene.add(ico);
-
-  // animate
   const animate = (t = 0) => {
     stats?.begin();
 
-    controls!.update();
-    renderer!.render(scene, camera);
+    controls.update();
+    // renderer.render(scene, camera);
+    effectComposer.render();
     stats?.end();
     animationFrameId = requestAnimationFrame(animate);
 
-    const time = t / 7500; //Date.now() / 1000;
-    material.uniforms.uTime.value = time;
+    const time = t / 5000; //Date.now() / 1000;
+    if (material.userData.shader) {
+      material.userData.shader.uniforms.uTime.value = time;
+    }
   };
+
   animate();
 });
 </script>

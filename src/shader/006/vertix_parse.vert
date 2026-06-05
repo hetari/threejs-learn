@@ -1,13 +1,5 @@
-precision mediump float;
-
 uniform float uTime;
-
-varying vec3 vPosition;
-varying vec3 vNormal;
-varying vec2 vUv;
 varying float vDisplacement;
-
-#define PI 3.14159265358979323846264338327950288419716939937510
 
 vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
 vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
@@ -105,23 +97,4 @@ float fit(float value, float sourceMin, float sourceMax, float targetMin,
 
 float wave(vec3 coords) {
   return fit(smoothMod(coords.y * 4.5, 1.0, 1.5), 0.35, 0.6, 0.0, 1.0);
-}
-
-void main() {
-  // fragments
-  vec3 coords = normal;
-  coords.y += uTime;
-  vec3 noisePattern = vec3(noise(coords));
-  float pattern = wave(noisePattern);
-
-  // varyings
-  vPosition = position;
-  vNormal = normal;
-  vUv = uv;
-  vDisplacement = pattern;
-
-  // MVP
-  vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
-  vec4 projectedPosition = projectionMatrix * modelViewPosition;
-  gl_Position = projectedPosition;
 }
