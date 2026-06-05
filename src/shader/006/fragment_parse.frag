@@ -1,5 +1,7 @@
 uniform float uTime;
 varying float vDisplacement;
+uniform vec3 uGlowColor;
+uniform float uGlowIntensity;
 
 vec3 perturbNormalArb(vec3 surf_pos, vec3 surf_norm, vec2 dHdxy,
                       float faceDirection) {
